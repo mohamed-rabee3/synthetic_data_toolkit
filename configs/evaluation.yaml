@@ -1,0 +1,42 @@
+clustering:
+  method: "hdbscan"
+
+  hdbscan:
+    min_cluster_size: 10
+    min_samples: 5
+    metric: "euclidean"
+    assign_noise_to_nearest: true
+
+  kmeans:
+    enabled: false
+    k_selection_method: "silhouette"
+    k_range_min: 3
+    k_range_max: 30
+    random_state: 42
+
+splitting:
+  eval_fraction: 0.12
+  stratify_by:
+    - "difficulty"
+    - "category"
+    - "source_file"
+  random_state: 42
+  min_items_per_cluster: 2
+
+rephrasing:
+  llm_role: "judge"   # uses ollama/qwen3
+  temperature: 0.7
+  max_tokens: 1024
+  prompt_file: "rephrase.txt"
+  generalize_evaluation_criteria: true
+  batch_size: 10
+  re_validate_dialect: true
+
+eval_mirror:
+  include_in_training_set: true
+
+output:
+  train_file: "train.jsonl"
+  eval_rephrased_file: "eval_rephrased.jsonl"
+  eval_mirror_file: "eval_mirror.jsonl"
+  split_report_file: "split_report.json"

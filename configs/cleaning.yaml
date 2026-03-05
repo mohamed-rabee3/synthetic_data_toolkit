@@ -1,0 +1,185 @@
+structural:
+  required_fields:
+    - "question"
+    - "answer"
+    - "evaluation_criteria"
+    - "category"
+    - "difficulty"
+  question_min_chars: 15
+  question_max_chars: 500
+  answer_min_chars: 30
+  answer_max_chars: 2000
+  evaluation_criteria_min_chars: 30
+  evaluation_criteria_max_chars: 1000
+  allowed_categories:
+    - "factual"
+    - "procedural"
+    - "reasoning"
+    - "troubleshooting"
+    - "conceptual"
+    - "comparative"
+  allowed_difficulties:
+    - "easy"
+    - "medium"
+    - "hard"
+  attempt_json_repair: true
+
+dialect:
+  saudi_markers:
+    - "وش"
+    - "ايش"
+    - "إيش"
+    - "ليش"
+    - "ابي"
+    - "أبي"
+    - "ابغى"
+    - "أبغى"
+    - "اقدر"
+    - "أقدر"
+    - "وين"
+    - "يعني"
+    - "كذا"
+    - "حق"
+    - "عشان"
+    - "علشان"
+    - "زي"
+    - "كيف"
+    - "مره"
+    - "واجد"
+    - "حيل"
+    - "ذحين"
+    - "الحين"
+    - "توه"
+    - "يبي"
+    - "تبي"
+    - "نبي"
+    - "طيب"
+    - "اوكي"
+    - "مو"
+    - "ماهو"
+    - "لازم"
+    - "المفروض"
+    - "قاعد"
+    - "يقدر"
+    - "تقدر"
+    - "حقي"
+    - "حقك"
+    - "عندي"
+    - "عندك"
+
+  question_min_markers: 1
+  answer_min_markers: 2
+
+  msa_indicators:
+    - "لذلك"
+    - "ينبغي"
+    - "يتوجب"
+    - "نظراً"
+    - "بالتالي"
+    - "علاوة على ذلك"
+    - "إذ أن"
+    - "من ثم"
+    - "حيث أن"
+    - "فضلاً عن"
+    - "يتعين"
+    - "على صعيد"
+    - "تجدر الإشارة"
+  msa_max_indicators: 3
+
+  llm_dialect_check:
+    enabled: true
+    sample_percentage: 15
+    llm_role: "judge"
+    temperature: 0.1
+    max_tokens: 200
+    prompt_file: "dialect_check.txt"
+    min_score: 4
+
+grounding:
+  source_language: "english"
+  answer_language: "saudi_dialect"
+
+  token_overlap:
+    enabled: false
+    min_overlap_ratio: 0.15
+
+  llm_grounding_check:
+    enabled: true
+    sample_percentage: 100
+    llm_role: "judge"
+    temperature: 0.1
+    max_tokens: 300
+    prompt_file: "grounding_check.txt"
+    actions:
+      fully_supported: "keep"
+      partially_supported: "keep"
+      not_supported: "discard"
+
+deduplication:
+  exact_match:
+    enabled: true
+    normalize: true
+
+  fuzzy:
+    enabled: true
+    library: "rapidfuzz"
+    similarity_threshold: 0.85
+    keep_strategy: "longer_answer"
+    blocking_strategy: "none"
+    brute_force_warn_threshold: 20000
+
+  semantic:
+    enabled: true
+    cosine_threshold: 0.92
+    calibration_mode: false
+    calibration_sample_size: 300
+    keep_strategy: "better_rubric"
+
+coverage:
+  embedding_model:
+    provider: "sentence_transformers"
+    model_name: "intfloat/multilingual-e5-large"
+    batch_size: 64
+    device: "cpu"
+
+  tsne:
+    enabled: true
+    perplexity: 30
+    n_iterations: 1000
+    random_state: 42
+    color_by:
+      - "source_file"
+      - "category"
+      - "generation_model"
+    output_format: "png"
+    output_prefix: "tsne_"
+
+  tag_histogram:
+    enabled: true
+    llm_role: "judge"
+    temperature: 0.1
+    max_tokens: 50
+    prompt_file: "tagging.txt"
+    tags_per_question: 3
+    normalization:
+      enabled: true
+      method: "embedding_clustering"
+      merge_similarity_threshold: 0.85
+    output_format: "png"
+    output_file: "topic_histogram"
+
+stage_concurrency:
+  max_concurrent_llm_calls: 2    # keep low for cloud ollama (raise to 8-10 for local)
+  requests_per_minute: 30
+  batch_size: 10
+
+substep_order:
+  - "grounding"
+  - "dialect"
+  - "tagging"
+
+output:
+  cleaned_qa_file: "cleaned_qa.jsonl"
+  discarded_file: "discarded_qa.jsonl"
+  cleaning_report_file: "cleaning_report.json"
+  embeddings_file: "embeddings.npy"

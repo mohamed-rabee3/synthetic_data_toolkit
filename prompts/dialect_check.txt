@@ -1,0 +1,23 @@
+You are a Saudi Arabic dialect expert. Rate the authenticity of the following question-answer pair's Saudi dialect on a scale of 1-5.
+
+## Question
+{question}
+
+## Answer
+{answer}
+
+## Rating Scale
+1 = Pure MSA (Modern Standard Arabic) or non-Saudi dialect
+2 = Mostly MSA with occasional Saudi words
+3 = Mixed — some Saudi dialect but significant MSA contamination
+4 = Good Saudi dialect with minor formal elements
+5 = Natural, authentic Saudi dialect throughout
+
+## What to check
+- Are Saudi-specific words used naturally (وش، ايش، ليش، أبي، عشان، الحين، etc.)?
+- Is the tone conversational and natural?
+- Are there Egyptian (ازاي، عايز), Iraqi (شكو), or Levantine (هلأ) markers? (penalize if found)
+- Is the grammar Saudi-style (ما + verb for negation, قاعد + verb for progressive)?
+
+Respond with ONLY a JSON object:
+{"score": <1-5>, "issues": "brief description of dialect issues found, or 'none'"}

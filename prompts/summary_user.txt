@@ -1,0 +1,9 @@
+Please summarize the following company document. What is it about? What is its purpose? What domain does it cover?
+
+Document filename: {source_file}
+
+---
+{document_text}
+---
+
+Provide a concise summary in 3-5 sentences.

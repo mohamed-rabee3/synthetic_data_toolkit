@@ -1,0 +1,51 @@
+summary:
+  enabled: true
+  llm_role: "judge"   # uses judge_llm from pipeline.yaml (ollama/qwen3)
+  temperature: 0.3
+  max_tokens: 300
+  max_input_tokens: 4000
+  system_prompt_file: "summary_system.txt"
+  user_prompt_file: "summary_user.txt"
+
+sentence_detection:
+  arabic_sentence_endings: true
+  abbreviations:
+    - "e.g."
+    - "i.e."
+    - "vs."
+    - "Dr."
+    - "Inc."
+    - "Ltd."
+    - "etc."
+    - "v."
+    - "No."
+    - "Sr."
+    - "Jr."
+  ignore_decimal_numbers: true
+  ignore_url_dots: true
+
+table_detection:
+  enabled: true
+  min_rows: 3
+  include_preceding_heading: true
+
+chunking:
+  min_chunk_tokens: 200
+  max_chunk_tokens: 5000
+  overlap_sentences: 2
+  force_break_on_headings: true
+  heading_levels_to_break_on:
+    - 1
+    - 2
+    - 3
+  merge_short_trailing_chunks: true
+
+tokenizer:
+  method: "tiktoken"
+  tiktoken_encoding: "o200k_base"
+  hf_tokenizer_name: null
+  chars_per_token: 3.5
+
+output:
+  chunks_file: "chunks.jsonl"
+  summaries_file: "summaries.json"

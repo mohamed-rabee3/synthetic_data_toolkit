@@ -1,0 +1,40 @@
+llm_role: "generation"   # uses generation_llm from pipeline.yaml (gemini)
+temperature: 0.8
+max_tokens: 4096
+response_format: "json"
+
+prompts:
+  system_prompt_file: "qa_gen_system.txt"
+  user_prompt_file: "qa_gen_user.txt"
+  followup_prompt_file: "qa_gen_followup.txt"
+
+dialect_spec:
+  inject_into_system_prompt: true
+  dialect_instructions_file: "dialect_spec.txt"
+
+iteration:
+  max_iterations: 10
+  feedback_format: "numbered_list"
+  parse_failure_strategy: "retry_once"
+  parse_failure_max_retries: 2
+
+  within_loop_dedup:
+    enabled: true
+    similarity_threshold: 0.80
+
+  stagnation_limit: 2
+
+multi_model:
+  enabled: false
+  models:
+    - provider: "gemini"
+      model: "gemini-2.0-flash-lite"
+      label: "gemini-flash-lite"
+
+batching:
+  checkpoint_every_n_chunks: 25
+  concurrency: 3
+  skip_failed_chunks: true
+
+output:
+  raw_qa_file: "raw_qa.jsonl"

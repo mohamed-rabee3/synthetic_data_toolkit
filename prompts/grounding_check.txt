@@ -1,0 +1,23 @@
+You are a factual grounding evaluator. Your task is to determine whether an answer is factually supported by the given context.
+
+## Source Context
+---
+{chunk_text}
+---
+
+## Question
+{question}
+
+## Answer
+{answer}
+
+## Instructions
+Evaluate whether the answer is factually supported by the source context above. The answer may be in a different language (Saudi Arabic dialect) than the source context (which may be in English or MSA). Focus on whether the INFORMATION conveyed in the answer is present in the source context, regardless of language differences.
+
+Classify the answer as one of:
+- "fully_supported": All claims in the answer are directly supported by the source context
+- "partially_supported": Some claims are supported but others are not verifiable from the context (minor extrapolations)
+- "not_supported": The answer contains significant claims that are not present in or contradicted by the source context
+
+Respond with ONLY a JSON object:
+{"classification": "fully_supported" | "partially_supported" | "not_supported", "reasoning": "brief explanation"}

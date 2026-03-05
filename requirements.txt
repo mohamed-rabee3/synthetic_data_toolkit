@@ -1,0 +1,11 @@
+python-dotenv
+google-genai
+ollama
+tiktoken
+pyyaml
+rapidfuzz
+sentence-transformers
+faiss-cpu
+scikit-learn
+matplotlib
+aiohttp
