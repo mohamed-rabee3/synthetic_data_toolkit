@@ -114,6 +114,9 @@ async def generate_summaries(
 # ---------------------------------------------------------------------------
 
 _ABBREVIATION_PATTERN: re.Pattern | None = None
+_HORIZONTAL_RULE_RE = re.compile(r"^[-*_]{3,}\s*$")
+_MARKDOWN_IMAGE_RE = re.compile(r"^!\[.*\]")
+_OCR_ARTIFACT_PATTERNS: list[re.Pattern] | None = None
 
 
 def _build_abbreviation_regex(abbreviations: list[str]) -> re.Pattern:
@@ -121,13 +124,81 @@ def _build_abbreviation_regex(abbreviations: list[str]) -> re.Pattern:
     return re.compile(r"\b(?:" + "|".join(escaped) + r")\.", re.IGNORECASE)
 
 
+def _compile_ocr_patterns(patterns: list[str]) -> list[re.Pattern]:
+    return [re.compile(p) for p in patterns]
+
+
+# ---------------------------------------------------------------------------
+# 1b-pre. Document-level text pre-processing
+# ---------------------------------------------------------------------------
+
+
+def preprocess_text(text: str, config: dict) -> str:
+    """Strip document-level noise (page headers, code blocks) before chunking."""
+    preproc_cfg = (
+        config["chunking"]["sentence_detection"].get("preprocessing", {})
+    )
+
+    lines = text.split("\n")
+
+    if preproc_cfg.get("remove_code_blocks", False):
+        filtered: list[str] = []
+        in_code_block = False
+        for raw_line in lines:
+            if raw_line.strip().startswith("```"):
+                in_code_block = not in_code_block
+                continue
+            if not in_code_block:
+                filtered.append(raw_line)
+        lines = filtered
+
+    repeat_threshold = preproc_cfg.get("repeating_line_threshold", 0)
+    if repeat_threshold > 0:
+        line_counts: dict[str, int] = {}
+        for raw_line in lines:
+            key = raw_line.strip()
+            if not key:
+                continue
+            # Protect HTML tags, headings, and table pipe rows from removal
+            if key.startswith("<") or key.startswith("#") or key.startswith("|"):
+                continue
+            line_counts[key] = line_counts.get(key, 0) + 1
+
+        repeating = {ln for ln, cnt in line_counts.items() if cnt >= repeat_threshold}
+        if repeating:
+            before = len(lines)
+            lines = [l for l in lines if l.strip() not in repeating]
+            logger.info(
+                "Removed %d repeating line patterns (%d lines, threshold=%d)",
+                len(repeating),
+                before - len(lines),
+                repeat_threshold,
+            )
+
+    boilerplate = set(preproc_cfg.get("boilerplate_lines", []))
+    if boilerplate:
+        lines = [l for l in lines if l.strip() not in boilerplate]
+
+    return "\n".join(lines)
+
+
 def detect_sentences(text: str, source_file: str, config: dict) -> list[Sentence]:
-    global _ABBREVIATION_PATTERN
+    global _ABBREVIATION_PATTERN, _OCR_ARTIFACT_PATTERNS
     sent_cfg = config["chunking"]["sentence_detection"]
+    filter_cfg = sent_cfg.get("line_filtering", {})
 
     abbreviations = sent_cfg.get("abbreviations", [])
     if _ABBREVIATION_PATTERN is None and abbreviations:
         _ABBREVIATION_PATTERN = _build_abbreviation_regex(abbreviations)
+
+    if _OCR_ARTIFACT_PATTERNS is None and filter_cfg.get("ocr_artifact_patterns"):
+        _OCR_ARTIFACT_PATTERNS = _compile_ocr_patterns(
+            filter_cfg["ocr_artifact_patterns"]
+        )
+
+    skip_hr = filter_cfg.get("skip_horizontal_rules", False)
+    skip_images = filter_cfg.get("skip_markdown_images", False)
+    skip_ocr = filter_cfg.get("skip_ocr_artifacts", False)
 
     lines = text.split("\n")
     sentences: list[Sentence] = []
@@ -137,6 +208,19 @@ def detect_sentences(text: str, source_file: str, config: dict) -> list[Sentence
         stripped = line.strip()
         if not stripped:
             continue
+
+        if skip_hr and _HORIZONTAL_RULE_RE.match(stripped):
+            continue
+
+        if skip_images and _MARKDOWN_IMAGE_RE.match(stripped):
+            continue
+
+        # OCR artifact check runs BEFORE heading/list detection so it can
+        # catch noise lines regardless of their syntactic shape.
+        if skip_ocr and _OCR_ARTIFACT_PATTERNS:
+            if any(p.search(stripped) for p in _OCR_ARTIFACT_PATTERNS):
+                logger.debug("Skipped OCR artifact: %.60s", stripped)
+                continue
 
         # Heading detection
         heading_match = re.match(r"^(#{1,6})\s+(.+)$", stripped)
@@ -274,6 +358,7 @@ def extract_tables(text: str, config: dict) -> tuple[list[TableBlock], str]:
         if re.match(r"^#{1,6}\s+", line):
             last_heading = line
 
+        # --- Markdown pipe tables ---
         if line.startswith("|") and line.endswith("|"):
             table_start = i
             table_lines = [lines[i]]
@@ -308,6 +393,42 @@ def extract_tables(text: str, config: dict) -> tuple[list[TableBlock], str]:
                 table_line_ranges.append((table_start, table_end))
                 i = table_end
                 continue
+
+        # --- HTML tables (<table>...</table>) ---
+        if re.match(r"<table[\s>]", line, re.IGNORECASE):
+            table_start = i
+            html_lines = [lines[i]]
+            j = i + 1
+            while j < len(lines):
+                html_lines.append(lines[j])
+                if re.search(r"</table>", lines[j], re.IGNORECASE):
+                    j += 1
+                    break
+                j += 1
+            table_end = j
+
+            row_count = sum(
+                1 for tl in html_lines if re.search(r"<tr[\s>]", tl, re.IGNORECASE)
+            )
+
+            if row_count >= min_rows:
+                table_text = "\n".join(html_lines)
+                prefix = ""
+                if table_cfg.get("include_preceding_heading", True) and last_heading:
+                    prefix = last_heading + "\n\n"
+
+                tables.append(
+                    TableBlock(
+                        text=prefix + table_text,
+                        preceding_heading=last_heading,
+                        start_line=table_start,
+                        end_line=table_end,
+                    )
+                )
+                table_line_ranges.append((table_start, table_end))
+                i = table_end
+                continue
+
         i += 1
 
     # Remove table lines from text
@@ -488,6 +609,9 @@ async def run_stage1(
     for md_file in md_files:
         logger.info("Chunking: %s", md_file.name)
         text = md_file.read_text(encoding="utf-8")
+
+        # 1b-pre. Pre-process (remove page headers, code blocks, boilerplate)
+        text = preprocess_text(text, config)
 
         # 1c. Extract tables
         tables, remaining_text = extract_tables(text, config)

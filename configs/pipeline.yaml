@@ -14,7 +14,7 @@ stages:
   run_cleaning: true
   run_evaluation: true
 
-domain_context: "هذه وثائق لشركة تقنية سعودية متخصصة في حلول الدفع الإلكتروني"
+domain_context: "هذي وثائق الهيئة السعودية لتنظيم الكهرباء (سيرا) اللي تتولى تنظيم قطاع الكهرباء في المملكة وتقديم الإرشادات والخدمات للمستهلكين"
 
 # Generation LLM — Gemini
 # mode: "ai_studio" (API key only) or "vertex_ai" (GCP project)
@@ -22,28 +22,26 @@ domain_context: "هذه وثائق لشركة تقنية سعودية متخصص
 generation_llm:
   provider: "gemini"
   mode: "vertex_ai"                      # "ai_studio" | "vertex_ai"
-  model: "gemini-2.0-flash-lite"
-  api_key: null                          # AI Studio only — set via GOOGLE_API_KEY env var
-  project: null                          # Vertex AI only — set via GOOGLE_CLOUD_PROJECT env var
-  location: "global"                     # Vertex AI only — set via GOOGLE_CLOUD_LOCATION env var
-  timeout_seconds: 120
-  max_retries: 3
-  retry_delay_seconds: 5
-  requests_per_minute: 500
-
-# Judge / utility LLM — Ollama
-# mode: "local" (localhost) or "cloud" (ollama.com hosted)
-# Override with OLLAMA_MODE env var
-judge_llm:
-  provider: "ollama"
-  mode: "local"                          # "local" | "cloud"
-  model: "qwen3"
-  host: "http://localhost:11434"         # local mode — set via OLLAMA_HOST env var
-  api_key: null                          # cloud mode — set via OLLAMA_API_KEY env var
+  model: "gemini-3.1-flash-lite-preview"
+  thinking_level: "medium"               # null, "low", "medium", "high"
+  api_key: null                          # set via GOOGLE_API_KEY env var
+  project: null                          # Vertex AI ADC only — set via GOOGLE_CLOUD_PROJECT env var
+  location: "global"                     # Vertex AI ADC only — set via GOOGLE_CLOUD_LOCATION env var
   timeout_seconds: 120
   max_retries: 5
-  retry_delay_seconds: 5
-  requests_per_minute: 30               # conservative for cloud; raise to 60+ for local
+  retry_delay_seconds: 8
+  requests_per_minute: 20
+# Judge / utility LLM — Gemini (same model as generation for consistency)
+judge_llm:
+  provider: "gemini"
+  mode: "vertex_ai"
+  model: "gemini-3.1-flash-lite-preview"
+  thinking_level: "low"
+  api_key: null                          # set via GOOGLE_API_KEY env var
+  timeout_seconds: 120
+  max_retries: 5
+  retry_delay_seconds: 8
+  requests_per_minute: 20
 
 logging:
   level: "INFO"

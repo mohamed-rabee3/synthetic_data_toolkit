@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from src.llm_client import UnifiedLLMClient
+from src.llm_client import TokenUsageTracker, UnifiedLLMClient
 from src.utils import ensure_dirs, load_all_configs, setup_logging
 
 
@@ -21,7 +21,8 @@ async def main():
     logger.info("Saudi Q&A Dataset Pipeline — Starting")
     logger.info("=" * 60)
 
-    llm_client = UnifiedLLMClient(config)
+    usage_tracker = TokenUsageTracker()
+    llm_client = UnifiedLLMClient(config, usage_tracker)
     stages = config.get("stages", {})
     pipeline_start = time.time()
 
@@ -39,6 +40,7 @@ async def main():
 
         chunks, summaries = await run_stage1(config, llm_client)
         logger.info("Stage 1 took %.1fs", time.time() - t0)
+        logger.info("Gemini usage (price till now): %s", llm_client.usage_tracker.format_summary())
     else:
         logger.info("Stage 1 skipped (run_chunking=false)")
         from src.utils import read_json, read_jsonl
@@ -68,6 +70,7 @@ async def main():
 
         raw_qa = await run_stage2(config, llm_client, chunks, summaries)
         logger.info("Stage 2 took %.1fs", time.time() - t0)
+        logger.info("Gemini usage (price till now): %s", llm_client.usage_tracker.format_summary())
     else:
         logger.info("Stage 2 skipped (run_generation=false)")
         from src.utils import read_jsonl
@@ -95,6 +98,7 @@ async def main():
 
         cleaned_qa, embeddings = await run_stage3(config, llm_client, raw_qa)
         logger.info("Stage 3 took %.1fs", time.time() - t0)
+        logger.info("Gemini usage (price till now): %s", llm_client.usage_tracker.format_summary())
     else:
         logger.info("Stage 3 skipped (run_cleaning=false)")
         from src.embeddings import load_embeddings
@@ -128,12 +132,14 @@ async def main():
 
         await run_stage4(config, llm_client, cleaned_qa, embeddings)
         logger.info("Stage 4 took %.1fs", time.time() - t0)
+        logger.info("Gemini usage (price till now): %s", llm_client.usage_tracker.format_summary())
     else:
         logger.info("Stage 4 skipped (run_evaluation=false)")
 
     total = time.time() - pipeline_start
     logger.info("=" * 60)
     logger.info("Pipeline complete in %.1fs", total)
+    logger.info("Gemini total usage: %s", llm_client.usage_tracker.format_summary())
     logger.info("=" * 60)
 
 

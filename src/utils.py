@@ -71,6 +71,8 @@ def _apply_env_overrides(config: dict):
         if os.getenv("OLLAMA_API_KEY"):
             gen["api_key"] = os.environ["OLLAMA_API_KEY"]
         gen["model"] = os.getenv("OLLAMA_GENERATION_MODEL") or os.getenv("OLLAMA_MODEL") or gen.get("model", "qwen3")
+        gen["think"] = judge.get("think", False)
+        gen["timeout_seconds"] = judge.get("timeout_seconds", 600)
     elif gen_provider == "gemini" or not gen_provider:
         gen["provider"] = gen.get("provider", "gemini")
         if os.getenv("GEMINI_MODE"):
@@ -82,15 +84,25 @@ def _apply_env_overrides(config: dict):
         if os.getenv("GOOGLE_CLOUD_LOCATION"):
             gen["location"] = os.environ["GOOGLE_CLOUD_LOCATION"]
 
-    # ── Judge (always Ollama unless YAML says otherwise) ──
-    if os.getenv("OLLAMA_MODE"):
-        judge["mode"] = os.environ["OLLAMA_MODE"]
-    if os.getenv("OLLAMA_HOST"):
-        judge["host"] = os.environ["OLLAMA_HOST"]
-    if os.getenv("OLLAMA_MODEL"):
-        judge["model"] = os.environ["OLLAMA_MODEL"]
-    if os.getenv("OLLAMA_API_KEY"):
-        judge["api_key"] = os.environ["OLLAMA_API_KEY"]
+    # ── Judge — only apply Ollama env overrides if provider is ollama ──
+    if judge.get("provider") == "ollama":
+        if os.getenv("OLLAMA_MODE"):
+            judge["mode"] = os.environ["OLLAMA_MODE"]
+        if os.getenv("OLLAMA_HOST"):
+            judge["host"] = os.environ["OLLAMA_HOST"]
+        if os.getenv("OLLAMA_MODEL"):
+            judge["model"] = os.environ["OLLAMA_MODEL"]
+        if os.getenv("OLLAMA_API_KEY"):
+            judge["api_key"] = os.environ["OLLAMA_API_KEY"]
+    elif judge.get("provider") == "gemini":
+        if os.getenv("GEMINI_MODE"):
+            judge["mode"] = os.environ["GEMINI_MODE"]
+        if os.getenv("GOOGLE_API_KEY"):
+            judge["api_key"] = os.environ["GOOGLE_API_KEY"]
+        if os.getenv("GOOGLE_CLOUD_PROJECT"):
+            judge["project"] = os.environ["GOOGLE_CLOUD_PROJECT"]
+        if os.getenv("GOOGLE_CLOUD_LOCATION"):
+            judge["location"] = os.environ["GOOGLE_CLOUD_LOCATION"]
 
     # ── Optional pipeline overrides ──
     if os.getenv("PIPELINE_DOMAIN_CONTEXT"):

@@ -137,10 +137,9 @@ deduplication:
 
 coverage:
   embedding_model:
-    provider: "sentence_transformers"
-    model_name: "intfloat/multilingual-e5-large"
+    provider: "google_genai"
+    model_name: "gemini-embedding-001"
     batch_size: 64
-    device: "cpu"
 
   tsne:
     enabled: true
@@ -169,7 +168,7 @@ coverage:
     output_file: "topic_histogram"
 
 stage_concurrency:
-  max_concurrent_llm_calls: 2    # keep low for cloud ollama (raise to 8-10 for local)
+  max_concurrent_llm_calls: 5
   requests_per_minute: 30
   batch_size: 10
 

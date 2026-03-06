@@ -33,7 +33,7 @@ multi_model:
 
 batching:
   checkpoint_every_n_chunks: 25
-  concurrency: 3
+  concurrency: 2
   skip_failed_chunks: true
 
 output:

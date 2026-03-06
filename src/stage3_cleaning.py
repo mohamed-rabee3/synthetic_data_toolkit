@@ -560,7 +560,7 @@ def create_coverage_visualizations(
         tsne = TSNE(
             n_components=2,
             perplexity=perplexity,
-            n_iter=tsne_cfg.get("n_iterations", 1000),
+            max_iter=tsne_cfg.get("n_iterations", 1000),
             random_state=tsne_cfg.get("random_state", 42),
         )
         coords = tsne.fit_transform(embeddings.astype(np.float32))

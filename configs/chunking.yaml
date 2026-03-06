@@ -2,27 +2,74 @@ summary:
   enabled: true
   llm_role: "judge"   # uses judge_llm from pipeline.yaml (ollama/qwen3)
   temperature: 0.3
-  max_tokens: 300
-  max_input_tokens: 4000
+  max_tokens: 3000
+  max_input_tokens: 8000
   system_prompt_file: "summary_system.txt"
   user_prompt_file: "summary_user.txt"
 
 sentence_detection:
   arabic_sentence_endings: true
   abbreviations:
+    # Arabic titles
+    - "د."        # دكتور (Doctor)
+    - "أ."        # أستاذ (Professor)
+    - "م."        # مهندس (Engineer) / ميلادي (AD)
+    - "أ.د."      # أستاذ دكتور (Prof. Dr.)
+    # Arabic calendar & references
+    - "هـ."       # هجري (Hijri year)
+    - "ص."        # صفحة (page)
+    - "ج."        # جزء (part/volume)
+    - "ط."        # طبعة (edition)
+    - "ع."        # عدد (number/issue)
+    - "رقم."      # رقم (number)
+    # Arabic units & electrical terms
+    - "ك.و."      # كيلوواط (kilowatt)
+    - "ك.ف."      # كيلوفولت (kilovolt)
+    - "ك.ف.أ."    # كيلوفولت أمبير (kVA)
+    - "ر.س."      # ريال سعودي (Saudi Riyal)
+    # English abbreviations (for bilingual docs)
     - "e.g."
     - "i.e."
-    - "vs."
-    - "Dr."
-    - "Inc."
-    - "Ltd."
     - "etc."
-    - "v."
+    - "Dr."
     - "No."
-    - "Sr."
-    - "Jr."
+    - "vs."
   ignore_decimal_numbers: true
   ignore_url_dots: true
+
+  preprocessing:
+    remove_code_blocks: true        # strip ```mermaid ... ``` and other fenced blocks
+    repeating_line_threshold: 4     # auto-remove any line that appears >=4 times in a doc
+    boilerplate_lines: []           # add exact strings to always remove (e.g. copyright footers)
+
+  line_filtering:
+    skip_horizontal_rules: true     # --- / *** / ___
+    skip_markdown_images: true      # ![alt](url) lines
+    skip_ocr_artifacts: true        # standalone numbers, icon descriptions, etc.
+    ocr_artifact_patterns:
+      # standalone page numbers
+      - '^\d+$'
+      # standalone single-character punctuation artifacts (stray | or -)
+      - '^[-|_*+]$'
+      # page-number followed by parenthesized text
+      - '^\d+\s*\(.*\)$'
+      # page-number | title  (e.g. "2 | دليل تقديم الخدمة الكهربائية")
+      - '^\d+\s*\|'
+      # 1-3 digit page-number directly followed by Arabic text (e.g. "9 دليل...")
+      - '^\d{1,3}\s+[\u0600-\u06FF]'
+      # reversed: Arabic title | page-number  (e.g. "دليل تقديم... | 10")
+      - '^[\u0600-\u06FF][\u0600-\u06FF\s]+\|\s*\d{1,3}\s*$'
+      # Arabic title glued to page-number (e.g. "دليل تقديم...79")
+      - '^[\u0600-\u06FF][\u0600-\u06FF\s]+\d{1,3}\s*$'
+      # OCR page/image description preambles
+      - '^The page features\b'
+      - '^\[The (image|page|document)\b'
+      # OCR image/icon labels
+      - '^Image:|^Icon:|^Figure:|^Photo:|^Graphic:'
+      # OCR logo/header descriptions
+      - '^SERA\s+(logo|-)'
+      # English OCR icon descriptions formatted as list items
+      - '^[-*]\s+(An?|The)\b.*\b(tower|lines|utilities|gear|sign|unit|charging|cable|outlet|equipment|plug|ambulance|hazard|shock|gloves|helmet|ladder|fence|panel|meter|transformer|generator|circuit|wire|pole|substation)\b'
 
 table_detection:
   enabled: true
